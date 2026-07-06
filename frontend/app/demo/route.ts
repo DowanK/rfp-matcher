@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
+const API_BASE = process.env.BACKEND_PROXY_TARGET ?? process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8000";
 
 export async function GET(req: NextRequest) {
   const sample = req.nextUrl.searchParams.get("sample");
