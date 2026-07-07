@@ -72,7 +72,16 @@ class _BatchVerdict(BaseModel):
 def _sku_label(meta: dict[str, str], fallback_id: str) -> str:
     name = meta.get("솔루션명") or fallback_id
     sub = meta.get("소분류") or ""
-    return f"{name} · {sub}" if sub else name
+    if not sub:
+        return name
+    # 솔루션명이 '브랜드 · 하위' 복합일 때 소분류 재결합으로 같은 조각이 반복되는 것 방지
+    # (예: 'KAI Studio · KAI Studio · 관리자 대시보드' → 'KAI Studio · 관리자 대시보드')
+    segs = [s.strip() for s in f"{name} · {sub}".split("·") if s.strip()]
+    out: list[str] = []
+    for s in segs:
+        if s not in out:
+            out.append(s)
+    return " · ".join(out)
 
 
 def _hit_to_sku(hit: SearchHit) -> MatchedSolutionSku:
