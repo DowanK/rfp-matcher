@@ -66,6 +66,28 @@ def _ordered_tabs(reqs: list[Req]) -> list[Req]:
     return reqs
 
 
+def _office_to_pdf(src: Path, workdir: Path) -> Path | None:
+    """.docx/.doc(워드) → PDF (LibreOffice headless). opendataloader가 PDF만 받아 브릿지.
+
+    docx 네이티브 지원 — 실패 시 None. 동시 실행 충돌을 피하려 문서별 UserInstallation 사용.
+    """
+    import subprocess
+
+    profile = workdir / "_lo_profile"
+    try:
+        r = subprocess.run(
+            ["soffice", "--headless", f"-env:UserInstallation=file://{profile}",
+             "--convert-to", "pdf", "--outdir", str(workdir), str(src)],
+            capture_output=True, text=True, timeout=300,
+        )
+        out = workdir / (src.stem + ".pdf")
+        if r.returncode == 0 and out.is_file() and out.stat().st_size > 0:
+            return out
+    except (subprocess.SubprocessError, OSError):
+        return None
+    return None
+
+
 def run(input_path: str | Path, gold_xlsx: str | None = None,
         work_root: Path = WORK_ROOT, mode: str = "fine",
         tab_mode: str = "cluster", korean_hwp: bool = False,
@@ -91,6 +113,14 @@ def run(input_path: str | Path, gold_xlsx: str | None = None,
     overview_src = None  # 개요용 원문(PDF JSON 또는 HTML 텍스트)
 
     ext = src.suffix.lower()
+    # .docx/.doc(신·구 워드) → soffice로 PDF 변환 후 opendataloader 경로 처리 (docx 네이티브 지원)
+    if ext in (".docx", ".doc"):
+        _pdf = _office_to_pdf(src, workdir)
+        if not _pdf:
+            raise ValueError(f"docx→pdf 변환 실패: {input_path}")
+        steps.append(f"convert: {ext} → pdf (soffice)")
+        src = _pdf
+        ext = ".pdf"
     from_html = ext in (".html", ".htm")
     if ext == ".pdf":
         _ensure_java()
