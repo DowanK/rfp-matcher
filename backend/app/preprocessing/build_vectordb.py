@@ -313,14 +313,19 @@ def main() -> None:
     env_path = Path(__file__).resolve().parents[3] / "config" / ".env"
     load_dotenv(env_path)
 
-    if "OPENAI_API_KEY" not in os.environ:
-        raise EnvironmentError("OPENAI_API_KEY is not set. Add it to the environment or .env.")
-
     files = iter_text_files(args.data_dir, args.glob)
     if not files:
         raise FileNotFoundError(f"No files matched {args.glob!r} in {args.data_dir}")
 
-    client = OpenAI()
+    # 사내망(easyPT) — metadata insight=gemma(vLLM), embedding=Ollama bge-m3. 외부 OpenAI 미사용.
+    metadata_client = OpenAI(
+        base_url=os.environ.get("GEMMA_BASE_URL", "http://localhost:8001/v1"),
+        api_key=os.environ.get("GEMMA_API_KEY") or "not-needed",
+    )
+    embedding_client = OpenAI(
+        base_url=os.environ.get("EMBED_BASE_URL", "http://localhost:11434/v1"),
+        api_key="ollama",
+    )
     chroma_client = chromadb.PersistentClient(path=str(args.persist_dir))
 
     if args.reset_collection:
@@ -351,7 +356,7 @@ def main() -> None:
     for index, chunk in enumerate(all_chunks, start=1):
         print(f"[{index}/{len(all_chunks)}] extracting metadata: {chunk.chunk_id}")
         try:
-            insight = extract_chunk_insight(client, args.metadata_model, chunk)
+            insight = extract_chunk_insight(metadata_client, args.metadata_model, chunk)
         except Exception as exc:
             print(f"  metadata extraction failed, using fallback for {chunk.chunk_id}: {exc}")
             insight = fallback_insight(chunk)
@@ -363,7 +368,7 @@ def main() -> None:
     ]
     print(f"Creating embeddings for {len(embedding_inputs)} chunks...")
     embeddings = create_embeddings(
-        client=client,
+        client=embedding_client,
         model=args.embedding_model,
         texts=embedding_inputs,
         batch_size=args.embedding_batch_size,

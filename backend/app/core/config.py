@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    # OpenAI 호환 엔드포인트 오버라이드 — 비우면 OpenAI 본가.
+    # easyPT vLLM(사내 GPU, OpenAI-compatible) 연동: "http://localhost:8001/v1" 처럼 지정.
+    openai_base_url: str = Field(default="", alias="OPENAI_BASE_URL")
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
 
     llm_provider: Literal["openai", "anthropic", "gemma", "fake"] = "gemma"
@@ -39,6 +42,8 @@ class Settings(BaseSettings):
         alias="GEMMA_BASE_URL",
     )
     gemma_verify_ssl: bool = Field(default=False, alias="GEMMA_VERIFY_SSL")
+    # easyPT 통합 — KT vLLM(OpenAI 호환)이 Bearer 인증을 요구할 때 키. 비우면 'not-needed'(인증 없는 vLLM).
+    gemma_api_key: str = Field(default="", alias="GEMMA_API_KEY")
     # 스캔 PDF OCR 용 Gemma VLM(vision) 서버 — 텍스트 LLM(10601)과 별도 포트(10629).
     gemma_vlm_base_url: str = Field(
         default="https://m2.geniemars.kt.co.kr:10629/v1",
@@ -47,6 +52,7 @@ class Settings(BaseSettings):
     ocr_dpi: int = Field(default=200, alias="OCR_DPI")
     llm_concurrency: int = Field(default=16, alias="LLM_CONCURRENCY")
     recommend_batch_size: int = 5
+    recommend_concurrency: int = 3  # 판정 배치 동시 실행 수 (1=순차)
 
     # 추천 엔진: catalog(kt_solutions.json BM25) | company_tech(Chroma Hybrid)
     recommend_engine: Literal["catalog", "company_tech"] = "company_tech"

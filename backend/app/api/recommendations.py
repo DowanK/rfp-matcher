@@ -43,3 +43,44 @@ async def start_recommendation(
 @router.get("/requirements/{req_id}/recommendation", response_model=Recommendation | None)
 async def get_recommendation(req_id: str, container: ContainerDep) -> Recommendation | None:
     return await container.repo.get_recommendation(req_id)
+
+
+# ── judge-only: 외부(easyPT)가 추출한 요구사항을 카탈로그로 판정만 (추출 스킵) ──
+class JudgeReqItem(BaseModel):
+    id: str
+    code: str = ""
+    name: str = ""
+    detail: str = ""
+    category: str = ""
+
+
+class JudgeRequest(BaseModel):
+    requirements: list[JudgeReqItem]
+
+
+@router.post("/requirements/judge")
+async def judge_requirements(body: JudgeRequest, container: ContainerDep) -> dict:
+    """제공된 요구사항을 KT 카탈로그(BM25)+LLM으로 판정. matcher 추출 없이 판정만.
+
+    공공 RFP처럼 easyPT가 요구사항을 뽑은 경우, 그 목록을 그대로 판정해
+    ai_risk·ai_reason·matched_solutions·missing_tech·rubric을 붙인다.
+    """
+    from app.domain.models import Requirement
+    from app.phase2.recommender.recommender import DEFAULT_BATCH_SIZE, RequirementRecommender
+
+    if not body.requirements:
+        return {"recommendations": []}
+    reqs = [
+        Requirement(
+            id=r.id, doc_id="external", category=(r.category or "기타"),
+            code=(r.code or r.id), name=(r.name or (r.detail[:60] if r.detail else r.id)),
+            detail=(r.detail or r.name or ""),
+        )
+        for r in body.requirements
+    ]
+    recommender = RequirementRecommender(llm=container.llm, catalog=container.catalog_retriever)
+    # batch_size 단위로 쪼개 호출 — 한 번에 전부 보내면 max_tokens가 vLLM 한계 초과(400).
+    recs = []
+    for i in range(0, len(reqs), DEFAULT_BATCH_SIZE):
+        recs.extend(await recommender.recommend_batch(reqs[i:i + DEFAULT_BATCH_SIZE]))
+    return {"recommendations": [r.model_dump(mode="json") for r in recs]}

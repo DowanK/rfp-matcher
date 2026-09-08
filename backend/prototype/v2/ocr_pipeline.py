@@ -90,7 +90,8 @@ def _ocr_image(img, s: Settings) -> str:
     req = urllib.request.Request(
         f"{s.gemma_vlm_base_url.rstrip('/')}/chat/completions", method="POST",
         data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json", "Authorization": "Bearer EMPTY"},
+        headers={"Content-Type": "application/json",
+                 "Authorization": f"Bearer {s.gemma_api_key or 'EMPTY'}"},  # easyPT: KT vLLM Bearer 인증(무인증이면 EMPTY)
     )
     with urllib.request.urlopen(req, timeout=180, context=_ctx(s.gemma_verify_ssl)) as resp:
         out = json.loads(resp.read())

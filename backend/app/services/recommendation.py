@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from app.core.container import Container
@@ -60,30 +61,38 @@ class RecommendationService:
 
             cache = ArtifactCache(self._c.settings.artifact_cache_dir)
 
-        for start in range(0, len(pending), self._batch_size):
-            batch = pending[start : start + self._batch_size]
-            batch_recs = await recommender.recommend_batch(batch)
-            for rec in batch_recs:
-                await self._c.repo.upsert_recommendation(rec)
-                results.append(rec)
-                done += 1
-                req = next(r for r in batch if r.id == rec.requirement_id)
-                await self._pipeline.emit(
-                    doc_id,
-                    PipelineStage.RECOMMENDING,
-                    payload={
-                        "done": done,
-                        "total": total,
-                        "snippet": f"AI 검토 {done}/{total} · {(req.detail or req.name)[:40]}…",
-                    },
-                )
-            if cache and doc:
-                cache.merge_save_recommendations(
-                    document=doc,
-                    recommendations=batch_recs,
-                    event_bus=self._c.event_bus,
-                )
-            logger.info("AI 배치 완료 doc=%s %d/%d", doc_id, done, total)
+        # 배치 동시 실행 — 각 배치는 독립 LLM 호출이라 vLLM continuous batching으로
+        # 벽시계만 단축(판정 내용은 순차와 동일). RECOMMEND_CONCURRENCY=1이면 기존 순차.
+        concurrency = max(1, int(getattr(self._c.settings, "recommend_concurrency", 3)))
+        batches = [pending[s: s + self._batch_size] for s in range(0, len(pending), self._batch_size)]
+        for gi in range(0, len(batches), concurrency):
+            group = batches[gi: gi + concurrency]
+            group_recs = await asyncio.gather(
+                *(recommender.recommend_batch(b) for b in group), return_exceptions=True)
+            for batch, batch_recs in zip(group, group_recs):
+                if isinstance(batch_recs, BaseException):
+                    raise batch_recs  # 기존 순차와 동일 — 배치 실패는 상위로 전파
+                for rec in batch_recs:
+                    await self._c.repo.upsert_recommendation(rec)
+                    results.append(rec)
+                    done += 1
+                    req = next(r for r in batch if r.id == rec.requirement_id)
+                    await self._pipeline.emit(
+                        doc_id,
+                        PipelineStage.RECOMMENDING,
+                        payload={
+                            "done": done,
+                            "total": total,
+                            "snippet": f"AI 검토 {done}/{total} · {(req.detail or req.name)[:40]}…",
+                        },
+                    )
+                if cache and doc:
+                    cache.merge_save_recommendations(
+                        document=doc,
+                        recommendations=batch_recs,
+                        event_bus=self._c.event_bus,
+                    )
+                logger.info("AI 배치 완료 doc=%s %d/%d", doc_id, done, total)
 
         await self._pipeline.emit(
             doc_id,

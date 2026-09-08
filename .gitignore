@@ -44,3 +44,7 @@ evaluator/reports/
 data/v2_work/
 data/result/
 data/artifacts/
+.gstack/
+
+# 벡터 DB 런타임 산출물(build_vectordb.py 결과)
+backend/data/chroma_db/

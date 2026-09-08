@@ -116,7 +116,14 @@ def build_default_registry() -> ConverterRegistry:
     reg.register(DocumentMime.DOCX, _build_docx_converter)
     reg.register(DocumentMime.DOC, _build_doc_converter)
     reg.register(DocumentMime.HWP, _build_legacy_hwp_converter)
+    reg.register(DocumentMime.HTML, _build_html_passthrough_converter)
     return reg
+
+
+def _build_html_passthrough_converter(settings: Settings) -> HtmlConverter:
+    # 이미 HTML로 변환된 입력(예: easyPT가 hwp5html로 변환) — 변환 없이 통과.
+    from .html_passthrough_converter import HtmlPassthroughConverter
+    return HtmlPassthroughConverter()
 
 
 _DEFAULT_REGISTRY = build_default_registry()

@@ -82,7 +82,7 @@ def build_llm_client(settings: Settings) -> AsyncLlmClient:
             logger.warning("openai SDK 미설치 (%s) — FakeLlmClient로 폴백", e)
             return FakeLlmClient()
         return OpenAIClient(
-            api_key="not-needed",
+            api_key=settings.gemma_api_key or "not-needed",
             model=settings.llm_model_gemma,
             base_url=settings.gemma_base_url,
             verify_ssl=settings.gemma_verify_ssl,

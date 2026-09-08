@@ -35,6 +35,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="rfp-matcher", lifespan=lifespan)
+    # 로컬 프론트(다른 포트)·easyPT 연동에서 브라우저 직접 호출 허용
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(health.router)
     app.include_router(settings.router)
     app.include_router(events.router)

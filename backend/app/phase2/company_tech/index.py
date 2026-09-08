@@ -101,7 +101,12 @@ class CompanyTechIndex:
         model: str,
         query: str,
     ) -> list[float]:
-        client = AsyncOpenAI(api_key=api_key)
+        import os
+        # 사내망 — 쿼리 임베딩도 빌드와 동일 endpoint(Ollama bge-m3). base_url 없으면 OpenAI 본가(외부).
+        client = AsyncOpenAI(
+            api_key=api_key or "ollama",
+            base_url=os.environ.get("EMBED_BASE_URL", "http://localhost:11434/v1"),
+        )
         response = await client.embeddings.create(
             model=model,
             input=query,

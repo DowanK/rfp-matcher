@@ -53,9 +53,9 @@ async def run_internal_review(
 
     search_mode = settings.company_tech_search_mode
     top_k = settings.company_tech_top_k
-    api_key = settings.openai_api_key
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY가 필요합니다 (임베딩·판정).")
+    # 사내망 — 임베딩은 Ollama bge-m3(EMBED_BASE_URL, api_key 무관), 판정/라우팅 LLM은 gemma(vLLM).
+    # OpenAI 키 불필요 → 빈 키면 'ollama' 더미로 통과(create_query_embedding이 base_url로 라우팅).
+    api_key = settings.openai_api_key or "ollama"
 
     if search_mode == "Hybrid":
         evidence_results = await index.hybrid_search(

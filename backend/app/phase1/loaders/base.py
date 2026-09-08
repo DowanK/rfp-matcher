@@ -16,6 +16,8 @@ EXT_TO_MIME: dict[str, DocumentMime] = {
     ".docx": DocumentMime.DOCX,
     ".hwp": DocumentMime.HWP,
     ".hwpx": DocumentMime.HWPX,
+    ".html": DocumentMime.HTML,  # 이미 HTML로 변환된 입력(예: easyPT가 hwp5html로 변환)
+    ".htm": DocumentMime.HTML,
 }
 
 
