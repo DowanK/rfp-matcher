@@ -1,0 +1,15 @@
+{
+  "alias_map": {
+    "k-model-믿-음-k-2-0-mini-자연어-처리-태스크": "k-model-믿-음-k-2-0-base-자연어-처리-태스크"
+  },
+  "groups": [
+    {
+      "canonical_id": "k-model-믿-음-k-2-0-base-자연어-처리-태스크",
+      "duplicate_ids": [
+        "k-model-믿-음-k-2-0-mini-자연어-처리-태스크"
+      ],
+      "reason": "strict_near",
+      "similarity": 1.0
+    }
+  ]
+}

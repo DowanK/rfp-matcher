@@ -15,7 +15,8 @@ async def test_seed_catalog_covers_k_intelligence_suite_categories() -> None:
     assert len({e.id for e in entries}) == len(entries)
     assert all(e.embedding_text.strip() for e in entries)
     majors = {e.대분류 for e in entries}
-    assert {"K Model", "K RAG", "K Agent", "K Studio", "K RAI", "K SPC"} <= majors
+    # 2026-09 DB 기반 재생성 카탈로그(211건)의 대분류. K Studio는 KAI Studio로, K SPC는 빠짐
+    assert {"K Model", "K RAG", "K Agent", "K RAI", "KAI Studio", "Intelligence Studio", "K Cloud"} <= majors
 
 
 @pytest.mark.asyncio
